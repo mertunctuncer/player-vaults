@@ -18,6 +18,8 @@ repositories {
 
 dependencies {
     paperweight.paperDevBundle("1.21.4-R0.1-SNAPSHOT")
+    implementation("org.xerial:sqlite-jdbc:3.49.1.0")
+    implementation("com.zaxxer:HikariCP:5.1.0")
 }
 
 tasks {
