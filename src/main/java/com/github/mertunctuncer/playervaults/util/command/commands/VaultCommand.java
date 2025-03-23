@@ -1,4 +1,4 @@
-package com.github.mertunctuncer.playervaults.command;
+package com.github.mertunctuncer.playervaults.util.command.commands;
 
 import com.github.mertunctuncer.playervaults.repository.VaultRepository;
 import org.bukkit.ChatColor;

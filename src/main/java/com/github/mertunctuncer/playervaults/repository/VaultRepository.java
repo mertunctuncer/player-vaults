@@ -15,18 +15,21 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class VaultRepository implements AutoCloseable {
 
     private final Server server;
     private final Plugin plugin;
+    private final Logger logger;
     private final VaultDAO dao;
     private final Map<UUID, Map<Integer, PlayerVault>> vaults = new ConcurrentHashMap<>();
 
-    public VaultRepository(Server server, Plugin plugin, VaultDAO dao) {
+    public VaultRepository(Server server, Plugin plugin, Logger logger,VaultDAO dao) {
         this.server = server;
         this.plugin = plugin;
+        this.logger = logger;
         this.dao = dao;
 
         this.server.getPluginManager().registerEvents(new Listener() {
@@ -40,19 +43,15 @@ public class VaultRepository implements AutoCloseable {
 
     // Lazy fetch
     public void openVault(Player owner, int vaultId) {
-
-        System.out.println("Opening vault " + vaultId);
-
+        this.logger.info("Opening vault for " + owner.getName() + " with id " + vaultId + ".");
         if(vaults.containsKey(owner.getUniqueId())) {
-            System.out.println("Vault map " + vaultId + " exists");
             Map<Integer, PlayerVault> playerVaults = vaults.get(owner.getUniqueId());
             if(playerVaults.containsKey(vaultId)) {
-                System.out.println("Vault " + vaultId + " exists");
+                this.logger.info("Vault for " + owner.getName() + " with id " + vaultId + " already cached.");
                 playerVaults.get(vaultId).open();
                 return;
             }
         } else {
-            System.out.println("Creating map " + vaultId + " exists");
             vaults.put(owner.getUniqueId(), new HashMap<>());
         }
 
@@ -61,6 +60,7 @@ public class VaultRepository implements AutoCloseable {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 PlayerVault vault = immutableVault;
                 if (vault == null) {
+                    this.logger.info("Vault not found. Creating vault for " + owner.getName() + " with id " + vaultId + ".");
                     vault = new PlayerVault(
                             server,
                             UUID.randomUUID(),
@@ -71,7 +71,6 @@ public class VaultRepository implements AutoCloseable {
 
                 vaults.get(owner.getUniqueId()).put(vaultId, vault);
                 PlayerVault finalVault = vault;
-
                 finalVault.open();
             });
         });
@@ -80,7 +79,8 @@ public class VaultRepository implements AutoCloseable {
     public void handleQuit(Player player) {
         if(!vaults.containsKey(player.getUniqueId())) return;
 
-        System.out.println("Quiting vault " + player.getUniqueId());
+        this.logger.info("Saving vaults for " + player.getName() + ".");
+
         Map<Integer, PlayerVault> playerVaults = vaults.get(player.getUniqueId());
         CompletableFuture<?>[] futures = playerVaults.entrySet().stream()
                 .map(entry -> dao.upsertVault(entry.getValue(), entry.getKey()))
