@@ -5,6 +5,9 @@ import com.github.mertunctuncer.playervaults.repository.database.VaultDAO;
 import org.bukkit.Bukkit;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.util.HashMap;
@@ -14,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-public class VaultRepository {
+public class VaultRepository implements AutoCloseable {
 
     private final Server server;
     private final Plugin plugin;
@@ -25,6 +28,14 @@ public class VaultRepository {
         this.server = server;
         this.plugin = plugin;
         this.dao = dao;
+
+        this.server.getPluginManager().registerEvents(new Listener() {
+            @EventHandler
+            public void onPlayerQuit(PlayerQuitEvent event) {
+                System.out.println("handle quit");
+                handleQuit(event.getPlayer());
+            }
+        }, plugin);
     }
 
     // Lazy fetch
@@ -77,6 +88,20 @@ public class VaultRepository {
 
         CompletableFuture.allOf(futures).thenRun(() -> {
             vaults.remove(player.getUniqueId());
+        });
+    }
+
+    @Override
+    public void close() {
+        PlayerQuitEvent.getHandlerList().unregister(plugin);
+        vaults.forEach((uuid, playerVaults) -> {
+            CompletableFuture<?>[] futures = playerVaults.entrySet().stream()
+                    .map(entry -> dao.upsertVault(entry.getValue(), entry.getKey()))
+                    .collect(Collectors.toUnmodifiableSet()).toArray(new CompletableFuture[0]);
+
+            CompletableFuture.allOf(futures).thenRun(() -> {
+                vaults.remove(uuid);
+            });
         });
     }
 }
