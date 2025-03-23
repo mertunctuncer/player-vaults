@@ -9,21 +9,22 @@ import org.bukkit.inventory.ItemStack;
 import java.util.UUID;
 
 public class PlayerVault {
+    private final UUID uuid;
     private final Server server;
     private final Inventory inventory;
+    private final UUID ownerUuid;
 
-    private final UUID owner;
-
-    public PlayerVault(Server server, UUID owner, String title, ItemStack[] contents) {
-        this(server, owner, title);
-        this.inventory.setContents(contents);
+    public PlayerVault(Server server, UUID uuid, UUID ownerUuid, String title, ItemStack[] items) {
+        this(server, uuid, ownerUuid, title);
+        this.inventory.setContents(items);
     }
 
-    public PlayerVault(Server server, UUID owner, String title) {
+    public PlayerVault(Server server, UUID uuid, UUID ownerUuid, String title) {
+        this.uuid = uuid;
         this.server = server;
         // paper deprecation, keep for bukkit support
-        this.inventory = Bukkit.createInventory(null, 9 * 9, title);
-        this.owner = owner;
+        this.inventory = Bukkit.createInventory(null, 9 * 6, title);
+        this.ownerUuid = ownerUuid;
     }
 
     public ItemStack[] getContents() {
@@ -31,7 +32,7 @@ public class PlayerVault {
     }
 
     public void open() {
-        Player player = server.getPlayer(owner);
+        Player player = server.getPlayer(ownerUuid);
         if(player == null) {
             throw new RuntimeException("Attempted to open player vault on a player that is not online.");
         }
@@ -42,15 +43,11 @@ public class PlayerVault {
         inventory.close();
     }
 
-    public Server getServer() {
-        return server;
+    public UUID getOwnerUuid() {
+        return ownerUuid;
     }
 
-    public Inventory getInventory() {
-        return inventory;
-    }
-
-    public UUID getOwner() {
-        return owner;
+    public UUID getUuid() {
+        return uuid;
     }
 }
