@@ -1,4 +1,4 @@
-package com.github.mertunctuncer.playervaults.repository.connection;
+package com.github.mertunctuncer.playervaults.repository.database;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;

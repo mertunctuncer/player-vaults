@@ -1,4 +1,4 @@
-package com.github.mertunctuncer.playervaults.repository.connection;
+package com.github.mertunctuncer.playervaults.repository.database;
 
 import java.sql.Connection;
 import java.sql.SQLException;

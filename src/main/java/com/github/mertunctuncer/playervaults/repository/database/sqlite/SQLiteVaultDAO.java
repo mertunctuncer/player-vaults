@@ -1,6 +1,8 @@
-package com.github.mertunctuncer.playervaults.repository;
+package com.github.mertunctuncer.playervaults.repository.database.sqlite;
 
 import com.github.mertunctuncer.playervaults.model.PlayerVault;
+import com.github.mertunctuncer.playervaults.repository.database.SQLConnectionProvider;
+import com.github.mertunctuncer.playervaults.repository.database.VaultDAO;
 import com.github.mertunctuncer.playervaults.util.VaultSerializer;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -10,38 +12,31 @@ import java.sql.*;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.logging.Logger;
 
-
-public class SQLiteVaultRepository implements VaultRepository {
+public class SQLiteVaultDAO implements VaultDAO {
     private final Server server;
-    private final Logger logger;
-    private final ConnectionProvider connectionProvider;
+    private final SQLConnectionProvider SQLConnectionProvider;
     private final ExecutorService executorService;
 
-    public SQLiteVaultRepository(
+    public SQLiteVaultDAO(
             Server server,
-            Logger logger,
-            ConnectionProvider connectionProvider,
+            SQLConnectionProvider SQLConnectionProvider,
             ExecutorService executorService
     ) {
         this.server = server;
-        this.logger = logger;
-        this.connectionProvider = connectionProvider;
+        this.SQLConnectionProvider = SQLConnectionProvider;
         this.executorService = executorService;
-        createTableAsync().thenRun(() -> {
-            this.logger.info("VaultRepository initialized.");
-        });
     }
 
     @Override
     public CompletableFuture<Void> createTableAsync() {
         return CompletableFuture.runAsync(() -> {
             try (
-                    Connection connection = connectionProvider.getConnection();
+                    Connection connection = SQLConnectionProvider.getConnection();
                     PreparedStatement statement = connection.prepareStatement(
                             "CREATE TABLE IF NOT EXISTS vaults (" +
-                                    "player_uuid TEXT PRIMARY KEY," +
+                                    "vault_uuid TEXT PRIMARY KEY," +
+                                    "player_uuid TEXT NOT NULL," +
                                     "vault_id INTEGER NOT NULL," +
                                     "vault_data TEXT NOT NULL" +
                                     ");");
@@ -57,13 +52,13 @@ public class SQLiteVaultRepository implements VaultRepository {
     public CompletableFuture<PlayerVault> fetchVault(Player owner, int vaultId) {
         String playerName = owner.getName();
         UUID uuid = owner.getUniqueId();
-        String title = String.format("%s's Vault", playerName);
+        String title = String.format("%s's Vault #%d", playerName, vaultId);
 
         return CompletableFuture.supplyAsync(() -> {
             ResultSet resultSet = null;
 
             try (
-                    Connection connection = connectionProvider.getConnection();
+                    Connection connection = SQLConnectionProvider.getConnection();
                     PreparedStatement statement = connection.prepareStatement(
                             "SELECT * FROM vaults WHERE " +
                                     "player_uuid=?," +
@@ -75,12 +70,16 @@ public class SQLiteVaultRepository implements VaultRepository {
                 statement.setInt(2, vaultId);
                 resultSet = statement.executeQuery();
 
-                resultSet.next();
-                String vaultData = resultSet.getString("vault_data");
+                if(resultSet.next()) {
+                    UUID vaultUuid = UUID.fromString(resultSet.getString("vault_uuid"));
+                    String vaultData = resultSet.getString("vault_data");
 
-                ItemStack[] items = VaultSerializer.deserialize(vaultData);
+                    ItemStack[] items = VaultSerializer.deserialize(vaultData);
 
-                return new PlayerVault(server, uuid, title, items);
+                    return new PlayerVault(server, vaultUuid, uuid, title, items);
+                }
+
+                return null;
             } catch (SQLException e) {
                 return null;
             } finally {
@@ -94,34 +93,31 @@ public class SQLiteVaultRepository implements VaultRepository {
     @Override
     public CompletableFuture<Void> upsertVault(PlayerVault vault, int vaultId){
         String vaultData = VaultSerializer.serialize(vault);
-
         return CompletableFuture.runAsync(() -> {
             try (
-                    Connection connection = connectionProvider.getConnection();
-                    PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO vaults(player_uuid,vault_id,vault_data) " +
-                            "VALUES(?,?,?) " +
-                            "ON CONFLICT(player_uuid) DO UPDATE SET " +
-                            "player_uuid=?," +
-                            "vauld_id=?," +
+                    Connection connection = SQLConnectionProvider.getConnection();
+                    PreparedStatement preparedStatement = connection.prepareStatement("INSERT INTO vaults(vault_uuid,player_uuid,vault_id,vault_data) " +
+                            "VALUES(?,?,?,?) " +
+                            "ON CONFLICT(vault_uuid) DO UPDATE SET " +
                             "vault_data=?" +
                             ";")
                     ) {
-                preparedStatement.setString(1, vault.getOwner().toString());
-                preparedStatement.setInt(2, vaultId);
-                preparedStatement.setString(3, vaultData);
-                preparedStatement.setString(4, vault.getOwner().toString());
-                preparedStatement.setInt(5, vaultId);
-                preparedStatement.setString(6, vaultData);
 
-                preparedStatement.executeUpdate();
+                preparedStatement.setString(1, vault.getUuid().toString());
+                preparedStatement.setString(2, vault.getOwnerUuid().toString());
+                preparedStatement.setInt(3, vaultId);
+                preparedStatement.setString(4, vaultData);
+                preparedStatement.setString(5, vaultData);
+
+                preparedStatement.execute();
             } catch (SQLException e) {
-                throw new RuntimeException(e);
+                System.out.println(e.getMessage());
             }
-        });
+        }, executorService);
     }
 
     @Override
     public void close() throws Exception {
-        connectionProvider.close();
+        SQLConnectionProvider.close();
     }
 }
