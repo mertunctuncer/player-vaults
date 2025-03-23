@@ -5,3 +5,7 @@ description: A simple player vaults plugin
 api-version: '1.21'
 load: STARTUP
 author: github.com/mertunctuncer
+commands:
+  vault:
+    description: Opens a vault
+    usage: /vault <id>
