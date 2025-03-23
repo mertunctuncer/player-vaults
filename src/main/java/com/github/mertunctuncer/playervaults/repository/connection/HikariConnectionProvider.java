@@ -1,4 +1,4 @@
-package com.github.mertunctuncer.playervaults.repository;
+package com.github.mertunctuncer.playervaults.repository.connection;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
@@ -6,10 +6,8 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 
-public class HikariConnectionProvider implements ConnectionProvider, AutoCloseable {
-    private final HikariConfig config = new HikariConfig();
+public class HikariConnectionProvider implements SQLConnectionProvider, AutoCloseable {
     private final HikariDataSource hikariDataSource;
-
 
     public HikariConnectionProvider(
             String url,
@@ -18,6 +16,7 @@ public class HikariConnectionProvider implements ConnectionProvider, AutoCloseab
             int maxPoolSize,
             long connectionTimeout
     ) {
+        HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
         config.setUsername(username);
         config.setPassword(password);
