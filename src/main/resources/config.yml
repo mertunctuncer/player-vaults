@@ -1,0 +1,7 @@
+
+
+sqlite-database-path: vaults.db
+database-username: username
+database-password: password
+database-max-connections: 5
+database-connection-timeout: 5000

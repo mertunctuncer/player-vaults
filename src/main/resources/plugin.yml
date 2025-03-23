@@ -1,0 +1,7 @@
+main: com.github.mertunctuncer.playervaults.PlayerVaults
+name: PlayerVaults
+version: 0.1.0
+description: A simple player vaults plugin
+api-version: '1.21'
+load: STARTUP
+author: github.com/mertunctuncer

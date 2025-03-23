@@ -10,23 +10,27 @@ import java.sql.*;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
+import java.util.logging.Logger;
 
 
 public class SQLiteVaultRepository implements VaultRepository {
     private final Server server;
+    private final Logger logger;
     private final ConnectionProvider connectionProvider;
     private final ExecutorService executorService;
 
     public SQLiteVaultRepository(
             Server server,
+            Logger logger,
             ConnectionProvider connectionProvider,
             ExecutorService executorService
     ) {
         this.server = server;
+        this.logger = logger;
         this.connectionProvider = connectionProvider;
         this.executorService = executorService;
         createTableAsync().thenRun(() -> {
-            this.server.getLogger().info("VaultRepository initialized.");
+            this.logger.info("VaultRepository initialized.");
         });
     }
 
