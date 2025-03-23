@@ -35,7 +35,6 @@ public class VaultRepository implements AutoCloseable {
         this.server.getPluginManager().registerEvents(new Listener() {
             @EventHandler
             public void onPlayerQuit(PlayerQuitEvent event) {
-                System.out.println("handle quit");
                 handleQuit(event.getPlayer());
             }
         }, plugin);
